@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prayer Times Debug Tool</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        h1 {
+            color: #2c5f2d;
+        }
+        .status {
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .time-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .time-card {
+            padding: 15px;
+            background: #f0f9ff;
+            border-radius: 6px;
+            border-left: 4px solid #0ea5e9;
+        }
+        .time-card label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #0369a1;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        th {
+            background: #2c5f2d;
+            color: white;
+            font-weight: 600;
+        }
+        tr:hover {
+            background: #f9fafb;
+        }
+        .within-window {
+            background: #dcfce7;
+            font-weight: bold;
+        }
+        .outside-window {
+            color: #6b7280;
+        }
+        button {
+            padding: 12px 24px;
+            background: #2c5f2d;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        button:hover {
+            background: #1e4620;
+        }
+        .error {
+            padding: 15px;
+            background: #fee2e2;
+            border-left: 4px solid #ef4444;
+            border-radius: 6px;
+            color: #991b1b;
+            margin-top: 20px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        .raw-data {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 15px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin-top: 20px;
+        }
+        .raw-data pre {
+            margin: 0;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🕌 Prayer Times Debug Tool</h1>
+
+    <div class="status">
+        <button onclick="loadDebugData()">🔄 Refresh Debug Data</button>
+        <div id="loading" class="loading" style="display: none;">Loading prayer times data...</div>
+        <div id="error" class="error" style="display: none;"></div>
+
+        <div id="results" style="display: none;">
+            <h2>Current Time Info</h2>
+            <div class="time-info">
+                <div class="time-card">
+                    <label>UK Time</label>
+                    <div id="ukTime"></div>
+                </div>
+                <div class="time-card">
+                    <label>Date</label>
+                    <div id="date"></div>
+                </div>
+                <div class="time-card">
+                    <label>Day</label>
+                    <div id="day"></div>
+                </div>
+                <div class="time-card">
+                    <label>Minutes Since Midnight</label>
+                    <div id="minutes"></div>
+                </div>
+            </div>
+
+            <h2>Prayer Times Analysis</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Prayer</th>
+                        <th>Type</th>
+                        <th>Time</th>
+                        <th>Minutes</th>
+                        <th>Minutes Until</th>
+                        <th>Minutes Ago</th>
+                        <th>Difference</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="prayerTable"></tbody>
+            </table>
+
+            <h2>Raw Debug Data</h2>
+            <div class="raw-data">
+                <pre id="rawData"></pre>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const SUPABASE_URL = 'https://vmracacpxlpnpsxfokty.supabase.co';
+
+        async function loadDebugData() {
+            const loading = document.getElementById('loading');
+            const error = document.getElementById('error');
+            const results = document.getElementById('results');
+
+            loading.style.display = 'block';
+            error.style.display = 'none';
+            results.style.display = 'none';
+
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/debug-prayer-times`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${await response.text()}`);
+                }
+
+                const data = await response.json();
+
+                // Display current time
+                document.getElementById('ukTime').textContent = data.currentTime.ukTime;
+                document.getElementById('date').textContent = data.currentTime.date;
+                document.getElementById('day').textContent = data.currentTime.dayName + (data.currentTime.isFriday ? ' 🕌' : '');
+                document.getElementById('minutes').textContent = data.currentTime.minutes;
+
+                // Display prayer analysis
+                const tbody = document.getElementById('prayerTable');
+                tbody.innerHTML = '';
+
+                if (data.prayerAnalysis && data.prayerAnalysis.length > 0) {
+                    data.prayerAnalysis.forEach(prayer => {
+                        const row = tbody.insertRow();
+                        row.className = prayer.withinWindow ? 'within-window' : 'outside-window';
+
+                        row.insertCell().textContent = prayer.prayer;
+                        row.insertCell().textContent = prayer.type;
+                        row.insertCell().textContent = prayer.time;
+                        row.insertCell().textContent = prayer.normalizedMinutes + ' (' + prayer.formatted + ')';
+                        row.insertCell().textContent = prayer.minutesUntil > 0 ? '+' + prayer.minutesUntil : prayer.minutesUntil;
+                        row.insertCell().textContent = prayer.minutesAgo > 0 ? '+' + prayer.minutesAgo : prayer.minutesAgo;
+                        row.insertCell().textContent = prayer.absoluteDifference;
+                        row.insertCell().textContent = prayer.status;
+                    });
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; color: #ef4444;">No prayer times found!</td></tr>';
+                }
+
+                // Display raw data
+                document.getElementById('rawData').textContent = JSON.stringify(data, null, 2);
+
+                loading.style.display = 'none';
+                results.style.display = 'block';
+
+            } catch (err) {
+                loading.style.display = 'none';
+                error.style.display = 'block';
+                error.textContent = 'Error: ' + err.message;
+            }
+        }
+
+        // Auto-load on page load
+        window.addEventListener('load', loadDebugData);
+    </script>
+</body>
+</html>
