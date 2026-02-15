@@ -20,6 +20,7 @@ const FAQ = lazy(() => import("./pages/FAQ"));
 const Feedback = lazy(() => import("./pages/Feedback"));
 const Install = lazy(() => import("./pages/Install"));
 const PrayerCalendar = lazy(() => import("./pages/PrayerCalendar"));
+const PosterCreator = lazy(() => import("./pages/PosterCreator"));
 
 const PageLoader = () => (
   <div className="min-h-screen flex items-center justify-center">
@@ -48,6 +49,7 @@ const App = () => (
               <Route path="/feedback" element={<Feedback />} />
               <Route path="/install" element={<Install />} />
               <Route path="/prayer-calendar" element={<PrayerCalendar />} />
+              <Route path="/poster-creator" element={<PosterCreator />} />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>
